@@ -1,15 +1,17 @@
 const hre = require("hardhat");
 async function main() {
-  console.log("🚀 Deploying SwapLogger...");
+  const EURC = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a";
   const [deployer] = await hre.ethers.getSigners();
-  console.log("📬 From:", deployer.address);
-  const Contract = await hre.ethers.getContractFactory("SwapLogger");
-  const instance = await Contract.deploy();
-  await instance.waitForDeployment();
-  const address = await instance.getAddress();
-  console.log("\n✅ SwapLogger deployed!");
-  console.log("📍 Address:", address);
-  console.log("🔍 https://testnet.arcscan.app/address/" + address);
-  console.log("\nVITE_CONTRACT_ADDRESS=" + address);
+  console.log("Deploying ArcDEX from:", deployer.address);
+  console.log("EURC token:", EURC);
+
+  const DEX = await hre.ethers.getContractFactory("ArcDEX");
+  const dex = await DEX.deploy(EURC);
+  await dex.waitForDeployment();
+  const addr = await dex.getAddress();
+
+  console.log("\nArcDEX deployed:", addr);
+  console.log("https://testnet.arcscan.app/address/" + addr);
+  console.log("\nVITE_CONTRACT_ADDRESS=" + addr);
 }
 main().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); });
