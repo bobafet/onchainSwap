@@ -45,11 +45,11 @@ export default function App() {
       <main className="relative z-10 max-w-xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🔄</div>
-          <h1 className="text-4xl font-black text-white mb-3">Arc <span className="text-[#6366f1]">Swap</span></h1>
+          <h1 className="text-4xl font-black text-white mb-3">onchain<span className="text-[#6366f1]">Swap</span></h1>
           <p className="text-slate-400 text-sm">Log your token swap intents on-chain. Track Arc DeFi activity.</p>
         </div>
         <div className="grid grid-cols-3 gap-3 mb-6">
-          {[{label:"Total Swaps",value:total?.toString()??"—",icon:"🔄"},{label:"Your Swaps",value:mySwaps?.toString()??"—",icon:"✨"},{label:"Tokens",value:"3",icon:"🪙"}].map(s=>(
+          {[{label:"Total Swaps",value:total?.toString()??"—",icon:"🔄"},{label:"Your Swaps",value:mySwaps?.toString()??"—",icon:"✨"},{label:"Tokens",value:"3",icon:"💱"}].map(s=>(
             <div key={s.label} className="bg-slate-900/60 border border-white/8 rounded-xl px-3 py-3 text-center">
               <div className="text-lg mb-0.5">{s.icon}</div><div className="text-white font-bold text-lg">{s.value}</div><div className="text-slate-500 text-xs mt-0.5">{s.label}</div>
             </div>
