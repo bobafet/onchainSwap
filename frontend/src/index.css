@@ -1,5 +1,49 @@
 @import "tailwindcss";
-:root { color-scheme: dark; }
-body { margin: 0; background-color: #080b14; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner { animation: spin 0.8s linear infinite; }
+
+/* Force dark mode always */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #080b14;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Animated gradient glow behind hero */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.glow-orb {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* GM card slide-in animation */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gm-card-enter {
+  animation: slide-in 0.4s ease-out forwards;
+}
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+/* RainbowKit dark override */
+[data-rk] {
+  --rk-colors-accentColor: #00d4aa !important;
+  --rk-colors-accentColorForeground: #080b14 !important;
+}
