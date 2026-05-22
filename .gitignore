@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+contracts/node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+
+# Hardhat artifacts & cache
+contracts/artifacts/
+contracts/cache/
+
+# Environment files — NEVER commit these, they contain private keys!
+.env
+.env.local
+.env.*.local
+contracts/.env
+frontend/.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
