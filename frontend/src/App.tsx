@@ -38,10 +38,11 @@ function getAmountOutLocal(amountIn: bigint, rIn: bigint, rOut: bigint): bigint 
 }
 
 function fmt(val: bigint, dec: number, digits = 4): string {
-  const s = formatUnits(val, dec);
-  const n = parseFloat(s);
+  if (val === 0n) return "0";
+  const n = parseFloat(formatUnits(val, dec));
   if (n === 0) return "0";
-  if (n < 0.00001) return "<0.00001";
+  // Small numbers: use 4 significant figures to avoid rounding to "0"
+  if (n < 0.001) return parseFloat(n.toPrecision(4)).toString();
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
@@ -269,7 +270,7 @@ export default function App() {
           </div>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div><div className="text-white font-bold text-sm">{hasLiquidity ? fmt(reserveUSDC, 18, 2) : "—"}</div><div className="text-slate-500 text-xs mt-0.5">USDC</div></div>
-            <div><div className="text-white font-bold text-sm">{hasLiquidity ? fmt(reserveToken, tokenDec, 4) : "—"}</div><div className="text-slate-500 text-xs mt-0.5">{tokenSymbol}</div></div>
+            <div><div className="text-white font-bold text-sm">{hasLiquidity ? fmt(reserveToken, tokenDec, tokenDec > 6 ? 8 : 4) : "—"}</div><div className="text-slate-500 text-xs mt-0.5">{tokenSymbol}</div></div>
             <div><div className="text-[#6366f1] font-bold text-sm">{price ? `${price.tokPerUsdc.toFixed(tokenDec > 6 ? 8 : 4)} ${tokenSymbol}` : "—"}</div><div className="text-slate-500 text-xs mt-0.5">per USDC</div></div>
           </div>
         </div>
