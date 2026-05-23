@@ -107,6 +107,28 @@ export default function App() {
   const totalLPBig = pool?.[2] ?? 0n;
   const removeLPBig = myLPBig > 0n ? myLPBig * BigInt(removePct) / 100n : 0n;
 
+  // Balance helpers
+  const usdcBalBig = usdcBal?.value ?? 0n;
+  const tokenBalBig = (tokenBal as bigint | undefined) ?? 0n;
+
+  // Liquidity validation
+  const addTokenTooSmall = hasLiquidity && addUSDCBig > 0n && addTokenNeeded === 0n;
+  const addUSDCInsufficient = addUSDCBig > 0n && usdcBal !== undefined && addUSDCBig > usdcBalBig;
+  const addTokenInsufficient = addTokenBig > 0n && tokenBal !== undefined && addTokenBig > tokenBalBig;
+  const addLiqError = addUSDCInsufficient ? "Insufficient USDC balance"
+    : addTokenTooSmall ? `Increase USDC amount — too small to require any ${tokenSymbol}`
+    : addTokenInsufficient ? `Insufficient ${tokenSymbol} balance`
+    : "";
+
+  // Swap validation
+  const swapInsufficientBal = amountInBig > 0n && (
+    (usdcToToken && usdcBal !== undefined && amountInBig > usdcBalBig) ||
+    (!usdcToToken && tokenBal !== undefined && amountInBig > tokenBalBig)
+  );
+  const swapBalError = swapInsufficientBal
+    ? `Insufficient ${usdcToToken ? "USDC" : tokenSymbol} balance`
+    : "";
+
   // Price
   const price = useMemo(() => {
     if (!hasLiquidity) return null;
@@ -227,7 +249,7 @@ export default function App() {
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className="text-xs text-slate-500">Pool:</span>
           {allTokens.map(t => (
-            <button key={t.address} onClick={() => { setSelectedToken(t); setAmountIn(""); setAddUSDC(""); }}
+            <button key={t.address} onClick={() => { setSelectedToken(t); setAmountIn(""); setAddUSDC(""); setAddTokenCustom(""); setRemovePct(0); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all ${selectedToken.address === t.address ? "bg-[#6366f1] border-[#6366f1] text-white" : "bg-slate-800/60 border-slate-700 text-slate-300 hover:border-[#6366f1]/50"}`}>
               <span>{t.icon}</span> USDC/{t.symbol}
             </button>
@@ -356,13 +378,16 @@ export default function App() {
                 {isLoading ? "Approving..." : `Approve ${tokenSymbol} for swap`}
               </button>
             ) : (
-              <button onClick={doSwap} disabled={isLoading || amountInBig === 0n || !hasLiquidity}
-                className="w-full py-3 rounded-xl font-bold text-sm bg-[#6366f1] text-white hover:bg-[#818cf8] active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                {isLoading
-                  ? <><svg className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" viewBox="0 0 24 24" />{isPending ? "Confirm..." : "Swapping..."}</>
-                  : !hasLiquidity ? `No liquidity for USDC/${tokenSymbol}`
-                  : `Swap ${usdcToToken ? `USDC → ${tokenSymbol}` : `${tokenSymbol} → USDC`}`}
-              </button>
+              <>
+                {swapBalError && <p className="mb-2 text-red-400 text-xs text-center">{swapBalError}</p>}
+                <button onClick={doSwap} disabled={isLoading || amountInBig === 0n || !hasLiquidity || !!swapBalError}
+                  className="w-full py-3 rounded-xl font-bold text-sm bg-[#6366f1] text-white hover:bg-[#818cf8] active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+                  {isLoading
+                    ? <><svg className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" viewBox="0 0 24 24" />{isPending ? "Confirm..." : "Swapping..."}</>
+                    : !hasLiquidity ? `No liquidity for USDC/${tokenSymbol}`
+                    : `Swap ${usdcToToken ? `USDC → ${tokenSymbol}` : `${tokenSymbol} → USDC`}`}
+                </button>
+              </>
             )}
             {writeError && <p className="mt-2 text-red-400 text-xs text-center">{writeError.message?.includes("User rejected") ? "Cancelled" : writeError.message?.slice(0, 100)}</p>}
           </div>
@@ -420,7 +445,9 @@ export default function App() {
                   </div>
                   <div className="flex gap-2 items-center">
                     {hasLiquidity ? (
-                      <div className="flex-1 text-white text-lg font-bold text-slate-300">{addTokenBig > 0n ? fmt(addTokenBig, tokenDec) : "—"}</div>
+                      <div className="flex-1 text-lg font-bold text-slate-300">
+                        {addTokenBig > 0n ? fmt(addTokenBig, tokenDec) : (addUSDCBig > 0n && addTokenTooSmall ? <span className="text-yellow-400 text-sm">too small</span> : "—")}
+                      </div>
                     ) : (
                       <input type="number" value={addTokenCustom} onChange={e => setAddTokenCustom(e.target.value)} placeholder="0.00"
                         className="flex-1 bg-transparent text-white text-lg font-bold outline-none placeholder-slate-600" />
@@ -441,12 +468,15 @@ export default function App() {
                   {isLoading ? "Approving..." : `Approve ${tokenSymbol}`}
                 </button>
               ) : (
-                <button onClick={doAddLiquidity} disabled={isLoading || addUSDCBig === 0n || addTokenBig === 0n}
-                  className="w-full py-3 rounded-xl font-bold text-sm bg-[#6366f1] text-white hover:bg-[#818cf8] active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2">
-                  {isLoading
-                    ? <><svg className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" viewBox="0 0 24 24" />{isPending ? "Confirm..." : "Adding..."}</>
-                    : "💧 Add Liquidity"}
-                </button>
+                <>
+                  {addLiqError && <p className="mb-2 text-red-400 text-xs text-center">{addLiqError}</p>}
+                  <button onClick={doAddLiquidity} disabled={isLoading || addUSDCBig === 0n || addTokenBig === 0n || !!addLiqError}
+                    className="w-full py-3 rounded-xl font-bold text-sm bg-[#6366f1] text-white hover:bg-[#818cf8] active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+                    {isLoading
+                      ? <><svg className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" viewBox="0 0 24 24" />{isPending ? "Confirm..." : "Adding..."}</>
+                      : "💧 Add Liquidity"}
+                  </button>
+                </>
               )}
             </div>
 
