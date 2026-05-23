@@ -41,8 +41,8 @@ function fmt(val: bigint, dec: number, digits = 4): string {
   if (val === 0n) return "0";
   const n = parseFloat(formatUnits(val, dec));
   if (n === 0) return "0";
-  // Small numbers: use 4 significant figures to avoid rounding to "0"
-  if (n < 0.001) return parseFloat(n.toPrecision(4)).toString();
+  // Small numbers: toFixed avoids scientific notation, strip trailing zeros
+  if (n < 0.001) return n.toFixed(dec).replace(/0+$/, '').replace(/\.$/, '') || "0";
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
