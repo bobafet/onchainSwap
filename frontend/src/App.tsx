@@ -109,9 +109,10 @@ export default function App() {
     ? addEURCNeeded
     : (() => { try { return addEURCCustom ? parseUnits(addEURCCustom, 6) : 0n; } catch { return 0n; } })();
 
-  // Approvals needed
-  const needsApproveSwap = !usdcToEurc && !!eurcAllowance && amountInBig > (eurcAllowance as bigint);
-  const needsApproveLiq = !!eurcAllowance && addEURCBig > (eurcAllowance as bigint);
+  // Approvals needed — note: !!0n === false so must check !== undefined
+  const allowanceBig = (eurcAllowance as bigint | undefined) ?? 0n;
+  const needsApproveSwap = !usdcToEurc && eurcAllowance !== undefined && amountInBig > allowanceBig;
+  const needsApproveLiq = eurcAllowance !== undefined && addEURCBig > allowanceBig;
 
   // Write
   const { data: hash, isPending, writeContract, error: writeError, reset } = useWriteContract();
@@ -211,8 +212,8 @@ export default function App() {
                 <span className="text-xs text-slate-400">You pay</span>
                 <span className="text-xs text-slate-500">
                   Bal: {usdcToEurc
-                    ? (usdcBalance ? fmt(usdcBalance.value, 18, 2) : "—")
-                    : (eurcBalance ? fmt(eurcBalance as bigint, 6, 2) : "—")}
+                    ? (usdcBalance !== undefined ? fmt(usdcBalance.value, 18, 2) : "—")
+                    : (eurcBalance !== undefined ? fmt(eurcBalance as bigint, 6, 2) : "—")}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -239,8 +240,8 @@ export default function App() {
                 <span className="text-xs text-slate-400">You receive</span>
                 <span className="text-xs text-slate-500">
                   Bal: {!usdcToEurc
-                    ? (usdcBalance ? fmt(usdcBalance.value, 18, 2) : "—")
-                    : (eurcBalance ? fmt(eurcBalance as bigint, 6, 2) : "—")}
+                    ? (usdcBalance !== undefined ? fmt(usdcBalance.value, 18, 2) : "—")
+                    : (eurcBalance !== undefined ? fmt(eurcBalance as bigint, 6, 2) : "—")}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -347,7 +348,7 @@ export default function App() {
                 <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3">
                   <div className="flex justify-between text-xs text-slate-400 mb-1">
                     <span>EURC amount {hasLiquidity ? "(auto-calculated)" : "(you set)"}</span>
-                    <span>Bal: {eurcBalance ? fmt(eurcBalance as bigint, 6, 2) : "—"}</span>
+                    <span>Bal: {eurcBalance !== undefined ? fmt(eurcBalance as bigint, 6, 2) : "—"}</span>
                   </div>
                   <div className="flex gap-2 items-center">
                     {hasLiquidity ? (
