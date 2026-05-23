@@ -45,6 +45,12 @@ function fmt(val: bigint, dec: number, digits = 4): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+function fmtShare(lpUser: bigint, lpTotal: bigint): string {
+  if (lpTotal === 0n) return "0%";
+  const pct = Number(lpUser * 10000n / lpTotal) / 100;
+  return pct < 0.01 ? "<0.01%" : `${pct.toFixed(2)}%`;
+}
+
 type Tab = "swap" | "liquidity";
 type TxType = "" | "approve" | "swap" | "addLiquidity" | "removeLiquidity";
 
@@ -55,7 +61,7 @@ export default function App() {
   const [amountIn, setAmountIn] = useState("");
   const [addUSDC, setAddUSDC] = useState("");
   const [addTokenCustom, setAddTokenCustom] = useState("");
-  const [removeLP, setRemoveLP] = useState("");
+  const [removePct, setRemovePct] = useState(0); // 0-100%
   const [txDone, setTxDone] = useState<TxType>("");
   const [importAddr, setImportAddr] = useState("");
   const [showImport, setShowImport] = useState(false);
@@ -90,10 +96,15 @@ export default function App() {
   const { data: allowance, refetch: refetchAllowance } = useReadContract({ address: tokenAddr, abi: ERC20_ABI, functionName: "allowance", args: [address!, DEX_ADDR], query: { enabled: !!address, ...refOpts } });
   const { data: myLP } = useReadContract({ address: DEX_ADDR, abi: DEX_ABI, functionName: "lpBalance", args: [tokenAddr, address!], query: { enabled: !!address, ...refOpts } });
   const { data: lpVal } = useReadContract({ address: DEX_ADDR, abi: DEX_ABI, functionName: "getLPValue", args: [tokenAddr, myLP ?? 0n], query: { enabled: !!myLP || myLP === 0n } });
+  const myLPBigTemp = (myLP as bigint | undefined) ?? 0n;
+  const removeLPBigTemp = myLPBigTemp > 0n && removePct > 0 ? myLPBigTemp * BigInt(removePct) / 100n : 0n;
+  const { data: removePreview } = useReadContract({ address: DEX_ADDR, abi: DEX_ABI, functionName: "getLPValue", args: [tokenAddr, removeLPBigTemp], query: { enabled: removeLPBigTemp > 0n } });
 
   const allowanceBig = (allowance as bigint | undefined) ?? 0n;
   const myLPBig = (myLP as bigint | undefined) ?? 0n;
   const lpValData = lpVal as [bigint, bigint] | undefined;
+  const totalLPBig = pool?.[2] ?? 0n;
+  const removeLPBig = myLPBig > 0n ? myLPBig * BigInt(removePct) / 100n : 0n;
 
   // Price
   const price = useMemo(() => {
@@ -169,8 +180,7 @@ export default function App() {
   );
 
   const doRemoveLiquidity = () => {
-    const lp = (() => { try { return BigInt(Math.floor(parseFloat(removeLP))); } catch { return 0n; } })();
-    exec("removeLiquidity", () => writeContract({ address: DEX_ADDR, abi: DEX_ABI, functionName: "removeLiquidity", args: [tokenAddr, lp] }));
+    exec("removeLiquidity", () => writeContract({ address: DEX_ADDR, abi: DEX_ABI, functionName: "removeLiquidity", args: [tokenAddr, removeLPBig] }));
   };
 
   const doImportToken = () => {
@@ -363,11 +373,21 @@ export default function App() {
             {/* Your position */}
             {isConnected && myLPBig > 0n && (
               <div className="bg-[#6366f1]/10 border border-[#6366f1]/30 rounded-2xl p-4">
-                <h3 className="text-sm font-bold text-[#6366f1] mb-3">Your Position — USDC/{tokenSymbol}</h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div><div className="text-white font-bold">{myLPBig.toString()}</div><div className="text-slate-500 text-xs">LP Tokens</div></div>
-                  <div><div className="text-white font-bold">{lpValData ? fmt(lpValData[0], 18, 4) : "—"}</div><div className="text-slate-500 text-xs">USDC</div></div>
-                  <div><div className="text-white font-bold">{lpValData ? fmt(lpValData[1], tokenDec, 4) : "—"}</div><div className="text-slate-500 text-xs">{tokenSymbol}</div></div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-[#6366f1]">Your Position — USDC/{tokenSymbol}</h3>
+                  <span className="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-lg">
+                    Share: {fmtShare(myLPBig, totalLPBig)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-slate-800/60 rounded-xl p-3">
+                    <div className="text-white font-bold text-lg">{lpValData ? fmt(lpValData[0], 18, 4) : "—"}</div>
+                    <div className="text-slate-500 text-xs mt-0.5">💵 USDC</div>
+                  </div>
+                  <div className="bg-slate-800/60 rounded-xl p-3">
+                    <div className="text-white font-bold text-lg">{lpValData ? fmt(lpValData[1], tokenDec, 4) : "—"}</div>
+                    <div className="text-slate-500 text-xs mt-0.5">{tokenIcon} {tokenSymbol}</div>
+                  </div>
                 </div>
               </div>
             )}
@@ -433,27 +453,53 @@ export default function App() {
             {isConnected && myLPBig > 0n && (
               <div className="bg-gradient-to-br from-slate-900 to-slate-800/50 border border-white/10 rounded-2xl p-5">
                 <h3 className="text-base font-bold text-white mb-4">Remove Liquidity</h3>
-                <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 mb-4">
-                  <div className="flex justify-between text-xs text-slate-400 mb-1">
-                    <span>LP Tokens</span><span>Max: {myLPBig.toString()}</span>
+
+                <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 mb-3">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-slate-400 text-sm">Amount to remove</span>
+                    <span className="text-white font-bold text-xl">{removePct}%</span>
                   </div>
+                  <input type="range" min={0} max={100} step={1} value={removePct}
+                    onChange={e => setRemovePct(Number(e.target.value))}
+                    className="w-full accent-[#6366f1] mb-3" />
                   <div className="flex gap-2">
-                    <input type="number" value={removeLP} onChange={e => setRemoveLP(e.target.value)} placeholder="0"
-                      className="flex-1 bg-transparent text-white text-lg font-bold outline-none placeholder-slate-600" />
-                    <button onClick={() => setRemoveLP(myLPBig.toString())}
-                      className="text-xs text-[#6366f1] bg-[#6366f1]/10 px-3 rounded-lg hover:bg-[#6366f1]/20">MAX</button>
+                    {[25, 50, 75, 100].map(p => (
+                      <button key={p} onClick={() => setRemovePct(p)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all ${removePct === p ? "bg-[#6366f1] border-[#6366f1] text-white" : "border-slate-600 text-slate-400 hover:border-[#6366f1]/50 hover:text-white"}`}>
+                        {p === 100 ? "MAX" : `${p}%`}
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {removePct > 0 && removePreview && (
+                  <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 mb-4">
+                    <p className="text-xs text-slate-400 mb-2">You will receive:</p>
+                    <div className="flex justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>💵</span>
+                        <span className="text-white font-bold">{fmt((removePreview as [bigint,bigint])[0], 18, 4)}</span>
+                        <span className="text-slate-400 text-sm">USDC</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>{tokenIcon}</span>
+                        <span className="text-white font-bold">{fmt((removePreview as [bigint,bigint])[1], tokenDec, 4)}</span>
+                        <span className="text-slate-400 text-sm">{tokenSymbol}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {txDone ? (
                   <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-[#6366f1]/15 border border-[#6366f1]/40 text-[#6366f1] font-semibold">
                     {successMsg[txDone]}
                   </div>
                 ) : (
-                  <button onClick={doRemoveLiquidity} disabled={isLoading || !removeLP}
+                  <button onClick={doRemoveLiquidity} disabled={isLoading || removePct === 0}
                     className="w-full py-3 rounded-xl font-bold text-sm bg-red-500/80 text-white hover:bg-red-500 active:scale-[0.98] disabled:opacity-50 transition-all flex items-center justify-center gap-2">
                     {isLoading
                       ? <><svg className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" viewBox="0 0 24 24" />{isPending ? "Confirm..." : "Removing..."}</>
-                      : "🔥 Remove Liquidity"}
+                      : `🔥 Remove ${removePct}% of Position`}
                   </button>
                 )}
               </div>
