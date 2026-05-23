@@ -107,28 +107,6 @@ export default function App() {
   const totalLPBig = pool?.[2] ?? 0n;
   const removeLPBig = myLPBig > 0n ? myLPBig * BigInt(removePct) / 100n : 0n;
 
-  // Balance helpers
-  const usdcBalBig = usdcBal?.value ?? 0n;
-  const tokenBalBig = (tokenBal as bigint | undefined) ?? 0n;
-
-  // Liquidity validation
-  const addTokenTooSmall = hasLiquidity && addUSDCBig > 0n && addTokenNeeded === 0n;
-  const addUSDCInsufficient = addUSDCBig > 0n && usdcBal !== undefined && addUSDCBig > usdcBalBig;
-  const addTokenInsufficient = addTokenBig > 0n && tokenBal !== undefined && addTokenBig > tokenBalBig;
-  const addLiqError = addUSDCInsufficient ? "Insufficient USDC balance"
-    : addTokenTooSmall ? `Increase USDC amount — too small to require any ${tokenSymbol}`
-    : addTokenInsufficient ? `Insufficient ${tokenSymbol} balance`
-    : "";
-
-  // Swap validation
-  const swapInsufficientBal = amountInBig > 0n && (
-    (usdcToToken && usdcBal !== undefined && amountInBig > usdcBalBig) ||
-    (!usdcToToken && tokenBal !== undefined && amountInBig > tokenBalBig)
-  );
-  const swapBalError = swapInsufficientBal
-    ? `Insufficient ${usdcToToken ? "USDC" : tokenSymbol} balance`
-    : "";
-
   // Price
   const price = useMemo(() => {
     if (!hasLiquidity) return null;
@@ -165,6 +143,26 @@ export default function App() {
   // Approval checks
   const needsApproveSwap = !usdcToToken && allowance !== undefined && amountInBig > allowanceBig;
   const needsApproveLiq = allowance !== undefined && addTokenBig > allowanceBig;
+
+  // Balance helpers & validation (must come AFTER amountInBig / addUSDCBig / addTokenBig are declared)
+  const usdcBalBig = usdcBal?.value ?? 0n;
+  const tokenBalBig = (tokenBal as bigint | undefined) ?? 0n;
+
+  const addTokenTooSmall = hasLiquidity && addUSDCBig > 0n && addTokenNeeded === 0n;
+  const addUSDCInsufficient = addUSDCBig > 0n && usdcBal !== undefined && addUSDCBig > usdcBalBig;
+  const addTokenInsufficient = addTokenBig > 0n && tokenBal !== undefined && addTokenBig > tokenBalBig;
+  const addLiqError = addUSDCInsufficient ? "Insufficient USDC balance"
+    : addTokenTooSmall ? `Increase USDC amount — too small to require any ${tokenSymbol}`
+    : addTokenInsufficient ? `Insufficient ${tokenSymbol} balance`
+    : "";
+
+  const swapInsufficientBal = amountInBig > 0n && (
+    (usdcToToken && usdcBal !== undefined && amountInBig > usdcBalBig) ||
+    (!usdcToToken && tokenBal !== undefined && amountInBig > tokenBalBig)
+  );
+  const swapBalError = swapInsufficientBal
+    ? `Insufficient ${usdcToToken ? "USDC" : tokenSymbol} balance`
+    : "";
 
   // Write
   const { data: hash, isPending, writeContract, error: writeError, reset } = useWriteContract();
